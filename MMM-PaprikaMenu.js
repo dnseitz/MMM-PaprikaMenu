@@ -119,7 +119,6 @@ Module.register("MMM-PaprikaMenu", {
             }
         });
         today = moment().startOf('day');
-
         var formatted = [];
         for (var m of meals) {
             formatted.push({

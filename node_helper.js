@@ -1,6 +1,7 @@
 var NodeHelper = require("node_helper");
 var PaprikaApi = require("paprika-api");
 var moment = require("moment");
+const bodyParser = require("body-parser");
 
 // Example result from recipe API.
 // { rating: 5,
@@ -60,6 +61,23 @@ module.exports = NodeHelper.create({
         console.log("Starting node_helper for module [" + this.name + "]");
         this.paprikaApi = null;
         this.outstandingRequest = false;
+
+        var self = this;
+
+        this.expressApp.use(bodyParser.json());
+        this.expressApp.post('/show_recipe', function (req, res) {
+          if (typeof req.body === 'undefined' || typeof req.body.type === 'undefined') {
+            res.sendStatus(422);
+            return;
+          }
+          console.log("[MMM-PaprikaMenu] POST Request to '/show_recipe' with type: " + req.body.type);
+          message = {
+            type: req.body.type
+          };
+          self.sendSocketNotification("PAPRIKA_SHOW_RECIPE", message);
+          res.sendStatus(200);
+          return;
+        });
     },
 
     socketNotificationReceived: function(notification, payload){
@@ -209,6 +227,8 @@ module.exports = NodeHelper.create({
         for (var meal of mealList) {
             if (meal.recipe_uid == recipeFromApi.uid) {
                 console.log('MMM-PaprikaMenu: Updating recipe');
+                console.log('MMM-PaprikaMenu: Recipe UID - ' + meal.recipe_uid);
+                console.log('MMM-PaprikaMenu: Meal UID - ' + meal.meal_uid);
                 this.updateMealObjectFromRecipe(meal, recipeFromApi);
             }
         }
