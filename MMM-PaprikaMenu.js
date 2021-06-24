@@ -56,6 +56,7 @@ Module.register("MMM-PaprikaMenu", {
         Log.info("Starting module: " + this.name);
 
         this.formattedMenuData = null;
+        this.meals = null;
 
         // Validate mealSortOrder.
         if (!(
@@ -101,9 +102,33 @@ Module.register("MMM-PaprikaMenu", {
             this.dataRefreshTimeStamp = moment().format("x");
 
             this.formattedMenuData = { meals: this.formatMeals(payload.meals) };
+            this.meals = payload.meals;
 
             console.log(this.formattedMenuData);
             this.updateDom(this.config.updateFadeSpeed);
+        } else if (notification == "PAPRIKA_SHOW_RECIPE") {
+          // TODO: This can't support multiple menu instances
+          Log.info("Trying to show recipe with type: " + payload.type);
+          if (payload.type == "nothing") {
+            this.sendNotification("PAPRIKA_DISMISS_RECIPE_DETAILS", {});
+            return;
+          } else if (payload.type == "today") {
+            Log.info(this.meals);
+            meal = this.meals.find(function(el) {
+              today = moment().startOf('day');
+              return today.isSame(el.date);
+            });
+
+            if (typeof meal == 'undefined') {
+              return;
+            }
+
+            payload = {
+              recipe_uid: meal.recipe_uid
+            }
+            this.sendNotification("PAPRIKA_SHOW_RECIPE_DETAILS", payload);
+            return;
+          }
         }
     },
 
