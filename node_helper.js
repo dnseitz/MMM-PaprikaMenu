@@ -60,6 +60,7 @@ module.exports = NodeHelper.create({
     start: function() {
         console.log("Starting node_helper for module [" + this.name + "]");
         this.paprikaApi = null;
+        this.latestMeals = null;
         this.outstandingRequest = false;
 
         var self = this;
@@ -72,10 +73,22 @@ module.exports = NodeHelper.create({
           }
           console.log("[MMM-PaprikaMenu] POST Request to '/show_recipe' with type: " + req.body.type);
           message = {
-            type: req.body.type
+            type: req.body.type,
+            data: req.body.data
           };
           self.sendSocketNotification("PAPRIKA_SHOW_RECIPE", message);
           res.sendStatus(200);
+          return;
+        });
+        this.expressApp.get('/recipes', function(req, res) {
+          console.log("[MMM-PaprikaMenu] GET Request to '/recipes'");
+          res.set('Content-Type', 'text/plain');
+          if (self.latestMeals == null) {
+            res.send({ meals: [] }).status(200).end();
+            return;
+          }
+
+          res.send({ meals: self.latestMeals }).status(200).end();
           return;
         });
     },
@@ -104,6 +117,7 @@ module.exports = NodeHelper.create({
                         instanceId: payload.instanceId,
                         meals: meals
                     };
+                    self.latestMeals = meals;
                     self.sendSocketNotification("PAPRIKA_MENU_DATA", resp);
                 })
                 .catch((error) => {
@@ -114,7 +128,7 @@ module.exports = NodeHelper.create({
                     self.outstandingRequest = false;
                 });
             }
-        }
+        } 
     },
 
     getMeals: function(weekStartsOnSunday) {

@@ -57,6 +57,7 @@ Module.register("MMM-PaprikaMenu", {
 
         this.formattedMenuData = null;
         this.meals = null;
+        this.currentShownMeal = null;
 
         // Validate mealSortOrder.
         if (!(
@@ -109,27 +110,116 @@ Module.register("MMM-PaprikaMenu", {
         } else if (notification == "PAPRIKA_SHOW_RECIPE") {
           // TODO: This can't support multiple menu instances
           Log.info("Trying to show recipe with type: " + payload.type);
-          if (payload.type == "nothing") {
-            this.sendNotification("PAPRIKA_DISMISS_RECIPE_DETAILS", {});
-            return;
-          } else if (payload.type == "today") {
-            Log.info(this.meals);
-            meal = this.meals.find(function(el) {
-              today = moment().startOf('day');
-              return today.isSame(el.date);
-            });
-
-            if (typeof meal == 'undefined') {
-              return;
-            }
-
-            payload = {
-              recipe_uid: meal.recipe_uid
-            }
-            this.sendNotification("PAPRIKA_SHOW_RECIPE_DETAILS", payload);
-            return;
+          switch (payload.type) {
+          case "nothing":
+            Log.info("Showing Nothing");
+            this.handleShowNothing();
+            break;
+          case "today":
+            Log.info("Showing Today");
+            this.handleShowToday(payload.data);
+            break;
+          case "next":
+            Log.info("Showing Next");
+            this.handleShowNext();
+            break;
+          case "previous":
+            Log.info("Showing Previous");
+            this.handleShowPrevious();
+            break;
+          case "name":
+            Log.info("Showing by Name");
+            this.handleShowName(payload.data);
+            break;
+          default:
+            Log.error("Unhandled command type: " + payload.type);
           }
         }
+    },
+
+    handleShowNothing: function() {
+      this.sendNotification("PAPRIKA_DISMISS_RECIPE_DETAILS", {});
+
+      this.currentShownMeal = null;
+    },
+
+    handleShowToday: function(mealType) {
+      Log.info("Showing meal type: " + mealType);
+      // If undefined, return -1 and just use date to get first meal
+      // We should probably do something like look at the current time 
+      // and guess which meal is being talked about
+      type = this.mealStringToMealType(mealType);
+      Log.info("Raw meal type: " + type);
+      meal = this.meals.find(function(el) {
+        today = moment().startOf('day');
+        isSameDate = today.isSame(el.date);
+        Log.info("Checking Meal Type: " + el.type + " And Requested Type: " + type);
+        return type >= 0 ? isSameDate && el.type == type : isSameDate;
+      });
+
+      if (typeof meal == 'undefined') {
+        return;
+      }
+
+      this.sendShowRecipeNotification(meal);
+    },
+
+    handleShowNext: function() {
+      if (this.currentShownMeal == null) {
+        return;
+      }
+
+      var self = this;
+
+      currentIndex = this.meals.findIndex((meal) => meal.meal_uid === self.currentShownMeal.meal_uid);
+
+      if (currentIndex >= 0 && currentIndex < this.meals.length) {
+        nextMeal = this.meals[currentIndex + 1];
+
+        this.sendShowRecipeNotification(nextMeal);
+      }
+    },
+
+    handleShowPrevious: function() {
+      if (this.currentShownMeal == null) {
+        return;
+      }
+
+      var self = this;
+
+      currentIndex = this.meals.findIndex((meal) => meal.meal_uid === self.currentShownMeal.meal_uid);
+
+      if (currentIndex > 0) {
+        nextMeal = this.meals[currentIndex - 1];
+
+        this.sendShowRecipeNotification(nextMeal);
+      }
+    },
+
+    handleShowName: function(name) {
+      if (typeof name != 'string') {
+        return;
+      }
+
+      meal = this.meals.find(function(el) {
+        return el.name == name;
+      });
+
+      if (typeof meal == 'undefined') {
+        return;
+      }
+
+      this.sendShowRecipeNotification(meal);
+    },
+
+    sendShowRecipeNotification: function(meal) {
+      payload = {
+        recipe_uid: meal.recipe_uid
+      }
+
+      this.sendNotification("PAPRIKA_SHOW_RECIPE_DETAILS", payload);
+
+      this.currentShownMeal = meal;
     },
 
     formatMeals: function(meals) {
@@ -202,5 +292,20 @@ Module.register("MMM-PaprikaMenu", {
             default:
                 return "Unknown meal type"
         }
+    },
+
+    mealStringToMealType: function(mealName) {
+      switch (mealName) {
+        case "breakfast":
+          return 0;
+        case "lunch":
+          return 1;
+        case "dinner":
+          return 2;
+        case "snack":
+          return 3;
+        default:
+          return -1;
+      }
     }
 })
