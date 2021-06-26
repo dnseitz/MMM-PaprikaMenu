@@ -82,13 +82,40 @@ module.exports = NodeHelper.create({
         });
         this.expressApp.get('/recipes', function(req, res) {
           console.log("[MMM-PaprikaMenu] GET Request to '/recipes'");
-          res.set('Content-Type', 'text/plain');
+          //res.set('Content-Type', 'application/json');
           if (self.latestMeals == null) {
             res.send({ meals: [] }).status(200).end();
             return;
           }
 
-          res.send({ meals: self.latestMeals }).status(200).end();
+          res.status(200).json({ meals: self.latestMeals }).end();
+          return;
+        });
+        this.expressApp.get('/meal_types', function(req, res) {
+          console.log("[MMM-PaprikaMenu] GET Request to '/meal_types'");
+          console.log("Received query: ");
+          console.log(req.query);
+          if (self.latestMeals == null) {
+            res.send({ meal_types: {} }).status(200).end();
+          }
+          var dayOffset = 0;
+          if (typeof req.query.day_offset === 'number') {
+            // TODO: Handle OOB
+            dayOffset = req.query.day_offset;
+          }
+
+          var payload = {};
+          today = moment().startOf('day');
+          for (var meal of self.latestMeals) {
+            mealType = self.typeToMealString(meal.type);
+            if (today.isSame(meal.date) && mealType != "unknown") {
+              var meals = payload[mealType] || []
+              meals.push({ recipe_uid: meal.recipe_uid, name: meal.name });
+              payload[mealType] = meals;
+            }
+          }
+
+          res.status(200).json({ meal_types: payload }).end();
           return;
         });
     },
@@ -246,5 +273,20 @@ module.exports = NodeHelper.create({
                 this.updateMealObjectFromRecipe(meal, recipeFromApi);
             }
         }
+    },
+
+    typeToMealString: function(type) {
+      switch (type) {
+      case 0:
+        return 'breakfast';
+      case 1:
+        return 'lunch';
+      case 2:
+        return 'dinner';
+      case 3: 
+        return 'snack';
+      default:
+        return 'unknown';
+      }
     },
 });

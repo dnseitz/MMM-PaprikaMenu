@@ -119,6 +119,10 @@ Module.register("MMM-PaprikaMenu", {
             Log.info("Showing Today");
             this.handleShowToday(payload.data);
             break;
+          case "recipe_uid":
+            Log.info("Showing Recipe UID");
+            this.handleShowRecipeUID(payload.data);
+            break;
           case "next":
             Log.info("Showing Next");
             this.handleShowNext();
@@ -155,6 +159,22 @@ Module.register("MMM-PaprikaMenu", {
         isSameDate = today.isSame(el.date);
         Log.info("Checking Meal Type: " + el.type + " And Requested Type: " + type);
         return type >= 0 ? isSameDate && el.type == type : isSameDate;
+      });
+
+      if (typeof meal == 'undefined') {
+        return;
+      }
+
+      this.sendShowRecipeNotification(meal);
+    },
+
+    handleShowRecipeUID: function(recipe_uid) {
+      if (typeof recipe_uid === 'undefined' || recipe_uid == '') {
+        Log.error("Need recipe UID to show");
+      }
+
+      meal = this.meals.find(function(el) {
+        return el.recipe_uid == recipe_uid;
       });
 
       if (typeof meal == 'undefined') {
